@@ -6,13 +6,14 @@ import sys
 import secret
 from essentials import dp, bot
 from funcs.db import create_database
-from handlers import start
+from handlers import start, choose_district
 
 
 # Запуск бота
 async def main():
     dp.include_routers(
-        start.form_router
+        start.form_router,
+        choose_district.form_router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)
