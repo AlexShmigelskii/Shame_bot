@@ -1,16 +1,29 @@
-# This is a sample Python script.
+import asyncio
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+import logging
+import sys
+
+import secret
+from essentials import dp, bot
+from funcs.db import create_database
+from handlers import start
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+# Запуск бота
+async def main():
+    dp.include_routers(
+        start.form_router
+    )
+
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+# Создаем цикл событий asyncio
+async def run():
+    await asyncio.gather(main())  # Запускаем бота и планировщик задач
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    create_database()
+    asyncio.run(run())

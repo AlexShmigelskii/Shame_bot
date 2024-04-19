@@ -1,0 +1,2 @@
+TOKEN = "6870255549:AAFmj-KnK3OPcsepAcSeRM-4fn-m6SJVfQ4"
+ADMIN_PASSWORD = "password"
