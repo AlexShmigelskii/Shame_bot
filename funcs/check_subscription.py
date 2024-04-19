@@ -1,8 +1,4 @@
 from essentials import bot
-import logging
-
-# Настройка конфигурации логгера
-logging.basicConfig(filename='error.log', level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 async def is_subscribed(user_id):
@@ -12,5 +8,7 @@ async def is_subscribed(user_id):
         return status == 'member'
 
     except Exception as ex:
+        pass
         # Запись ошибки в лог-файл
-        logging.error(f'Ошибка при выполнении функции is_subscribed: {ex}')
+        with open('error.log', 'a') as f:
+            f.write(str(ex) + '\n')
