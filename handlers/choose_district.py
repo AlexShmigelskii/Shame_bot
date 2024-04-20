@@ -1,9 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from Forms.choose_district_form import Form
 from funcs.check_subscription import is_subscribed
 
 from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb
@@ -21,7 +19,12 @@ async def choose_district(callback_query: CallbackQuery):
     if existing_user:
         if await is_subscribed(user_id):
             # Пользователь подписан на канал, позволяем ему выбирать район
-            await callback_query.message.edit_text("Выберите район:",
+            await callback_query.message.edit_text("На связи бот shame. Выбирай район, и я создам подборку лучших "
+                                                   "ресторанов, кафе, баров и клубов в этом месте."
+                                                   "\nЕсли остались вопросы или есть обратная связь по боту, напишите "
+                                                   "Насте @onesddluv. А если хотите разместить своё заведение в боте "
+                                                   "или предложить другое сотрудничество — свяжитесь с Яной "
+                                                   "@kosmaticyana.",
                                                    reply_markup=get_district_kb())
 
         else:
@@ -39,8 +42,7 @@ async def choose_district(callback_query: CallbackQuery):
 
 
 @form_router.callback_query(F.data.in_({"Арбат", "Басманный", "Замоскворечье", " Красносельский", "Мещанский",
-                                        "Пресненский", "Таганский", "Тверской", "Хамовники", "Якиманка",
-                                        }))
+                                        "Пресненский", "Таганский", "Тверской", "Хамовники", "Якиманка",}))
 async def process_chosen_district(callback_query: CallbackQuery, state: FSMContext):
     district = callback_query.data
 
