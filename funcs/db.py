@@ -177,7 +177,7 @@ def save_photo_path_to_database(establishment_id, photo_path):
     conn.close()
 
 
-def get_establishments(district_name, establishment_type):
+async def get_establishments(district_name, establishment_type):
     conn = sqlite3.connect('shame.db')
     cursor = conn.cursor()
 
@@ -185,12 +185,26 @@ def get_establishments(district_name, establishment_type):
     district_id = get_district_id(district_name)
 
     # Получаем ID типа заведения
-    establishment_id = get_type_id(establishment_type)
+    establishment_type_id = get_type_id(establishment_type)
 
     # Запрос к базе данных для получения заведений по району и типу
-    cursor.execute("SELECT * FROM establishments WHERE id_district=? AND id_type=?", (district_id, establishment_id))
+    cursor.execute("SELECT * FROM establishments WHERE id_district=? AND id_type=?", (district_id, establishment_type_id))
     establishments = cursor.fetchall()
 
     conn.close()
 
     return establishments
+
+
+def get_photo_paths_for_establishment(establishment_id):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    # Выбираем пути к фотографиям для указанного establishment_id
+    cursor.execute("SELECT path_to_photo FROM establishment_photos WHERE id_establishment = ?", (establishment_id,))
+    photo_paths = cursor.fetchall()
+
+    conn.close()
+
+    # Возвращаем список путей к фотографиям
+    return [path[0] for path in photo_paths]

@@ -1,12 +1,13 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, InputMediaPhoto, FSInputFile, InputFile
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.media_group import MediaGroupBuilder
 
 from funcs.check_subscription import is_subscribed
 
 from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb
 
-from funcs.db import check_existing_user, add_new_user, get_establishments
+from funcs.db import check_existing_user, add_new_user, get_establishments, get_photo_paths_for_establishment
 
 form_router = Router()
 
@@ -54,6 +55,7 @@ async def process_chosen_district(callback_query: CallbackQuery, state: FSMConte
 
 @form_router.callback_query(F.data.in_({"Ресторан", "Бар"}))
 async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext):
+    chat_id = callback_query.from_user.id
     establishment_type = callback_query.data
 
     data = await state.get_data()
@@ -64,6 +66,7 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
     establishments = await get_establishments(district, establishment_type)
 
     if establishments:
+
         num_per_message = 3
         num_messages = len(establishments) // num_per_message + (len(establishments) % num_per_message > 0)
 
@@ -71,16 +74,29 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
             start_index = i * num_per_message
             end_index = min((i + 1) * num_per_message, len(establishments))
 
-            message_text = ""
             for establishment in establishments[start_index:end_index]:
-                establishment_text = f"{establishment[0]}\n" \
-                                     f"📍 {establishment[4]}\n" \
-                                     f"Ⓜ️ {establishment[5]}\n\n" \
-                                     f"{establishment[6]}\n\n" \
-                                     f"{establishment[7]}"
-                message_text += establishment_text + "\n\n"
+                establishment_id = establishment[0]
+                establishment_name = establishment[1]
+                establishment_address = establishment[4]
+                establishment_metro = establishment[5]
+                establishment_description = establishment[6]
+                establishment_feature = establishment[7]
+                establishment_photo_paths = get_photo_paths_for_establishment(establishment_id)
 
-            await callback_query.message.bot.send_photo(message_text)
+                establishment_text = f"{establishment_name}\n" \
+                                     f"📍 {establishment_address}\n" \
+                                     f"Ⓜ️ {establishment_metro}\n\n" \
+                                     f"{establishment_description}\n\n" \
+                                     f"{establishment_feature}"
+
+                # Создаем медиа группу
+                media_group = MediaGroupBuilder(caption=establishment_text)
+
+                for photo_path in establishment_photo_paths:
+                    media_group.add(type="photo", media=FSInputFile(photo_path))
+
+                await callback_query.bot.send_media_group(chat_id=chat_id, media=media_group.build())
+
     else:
         await callback_query.message.edit_text(
             f'К сожалению, в районе {district} нет заведений типа {establishment_type}.')
