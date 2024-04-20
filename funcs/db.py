@@ -38,10 +38,7 @@ def create_database():
     cursor.execute('''CREATE TABLE IF NOT EXISTS establishment_photos (
                     id_photo INTEGER PRIMARY KEY,
                     id_establishment INTEGER,
-                    path_to_photo1 TEXT,
-                    path_to_photo2 TEXT,
-                    path_to_photo3 TEXT,
-                    path_to_photo4 TEXT,
+                    path_to_photo TEXT,
                     FOREIGN KEY (id_establishment) REFERENCES establishments(id_establishment))''')
 
     # districts = [
@@ -125,8 +122,10 @@ def get_type_id(establishment_type):
     else:
         return None
 
+
 # Функция для сохранения заведения в базе данных
 async def save_establishment_to_database(name, features, address, metro, description, district_id, type_id):
+
     # Подключение к базе данных
     conn = sqlite3.connect('shame.db')
     cursor = conn.cursor()
@@ -137,5 +136,61 @@ async def save_establishment_to_database(name, features, address, metro, descrip
                    (name, features, address, metro, description, district_id, type_id))
     conn.commit()
 
+    establishment_id = cursor.lastrowid
+
     # Закрыть соединение
     conn.close()
+
+    # Возвращаем establishment_id
+    return establishment_id
+
+
+async def check_existing_establishment(name, address, metro, description, type_id, district_id):
+    # Подключение к базе данных
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    # Поиск заведения с аналогичными данными
+    cursor.execute("SELECT id_establishment FROM establishments WHERE name=? AND address=? AND metro_station=? AND description=? AND id_type=? AND id_district=?",
+                   (name, address, metro, description, type_id, district_id))
+    result = cursor.fetchone()
+
+    # Закрыть соединение
+    conn.close()
+
+    if result:
+        # Если заведение найдено, возвращаем его ID
+        return result[0]
+    else:
+        # Если заведение не найдено, возвращаем None
+        return None
+
+
+def save_photo_path_to_database(establishment_id, photo_path):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    cursor.execute("INSERT INTO establishment_photos (id_establishment, path_to_photo) VALUES (?, ?)",
+                   (establishment_id, photo_path))
+
+    conn.commit()
+    conn.close()
+
+
+def get_establishments(district_name, establishment_type):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    # Получаем ID района
+    district_id = get_district_id(district_name)
+
+    # Получаем ID типа заведения
+    establishment_id = get_type_id(establishment_type)
+
+    # Запрос к базе данных для получения заведений по району и типу
+    cursor.execute("SELECT * FROM establishments WHERE id_district=? AND id_type=?", (district_id, establishment_id))
+    establishments = cursor.fetchall()
+
+    conn.close()
+
+    return establishments

@@ -6,7 +6,7 @@ from funcs.check_subscription import is_subscribed
 
 from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb
 
-from funcs.db import check_existing_user, add_new_user
+from funcs.db import check_existing_user, add_new_user, get_establishments
 
 form_router = Router()
 
@@ -54,13 +54,33 @@ async def process_chosen_district(callback_query: CallbackQuery, state: FSMConte
 
 @form_router.callback_query(F.data.in_({"Ресторан", "Бар"}))
 async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext):
-    place = callback_query.data
+    establishment_type = callback_query.data
 
-    await state.update_data(place=place)
-
-    data = await state.get_data()  # Здесь хранятся район и место!
+    data = await state.get_data()
 
     district = data.get("district")
-    place_1 = data.get("place")
 
-    await callback_query.message.edit_text(f'Ты выбрал {place_1} в районе {district}')
+    # Получаем список заведений из базы данных
+    establishments = await get_establishments(district, establishment_type)
+
+    if establishments:
+        num_per_message = 3
+        num_messages = len(establishments) // num_per_message + (len(establishments) % num_per_message > 0)
+
+        for i in range(num_messages):
+            start_index = i * num_per_message
+            end_index = min((i + 1) * num_per_message, len(establishments))
+
+            message_text = ""
+            for establishment in establishments[start_index:end_index]:
+                establishment_text = f"{establishment[0]}\n" \
+                                     f"📍 {establishment[4]}\n" \
+                                     f"Ⓜ️ {establishment[5]}\n\n" \
+                                     f"{establishment[6]}\n\n" \
+                                     f"{establishment[7]}"
+                message_text += establishment_text + "\n\n"
+
+            await callback_query.message.bot.send_photo(message_text)
+    else:
+        await callback_query.message.edit_text(
+            f'К сожалению, в районе {district} нет заведений типа {establishment_type}.')

@@ -32,3 +32,10 @@ def get_admin_place_kb() -> InlineKeyboardMarkup:
          InlineKeyboardButton(text="Бар", callback_data="admin_Бар")],
     ])
     return kb
+
+
+def get_admin_stop_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Готово!", callback_data="photos_done")],
+    ])
+    return kb
