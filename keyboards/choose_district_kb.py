@@ -32,3 +32,18 @@ def get_subscription_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Готово!", callback_data="check_subscription")],
     ])
     return kb
+
+
+def get_back_to_district_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="К выбору региона", callback_data="choose_district")]
+    ])
+    return kb
+
+
+def get_continue_establishments_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Показать еще", callback_data="continue_establishments")],
+        [InlineKeyboardButton(text="К выбору региона", callback_data="choose_district")]
+    ])
+    return kb

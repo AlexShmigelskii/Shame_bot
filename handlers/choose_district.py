@@ -5,7 +5,7 @@ from aiogram.utils.media_group import MediaGroupBuilder
 
 from funcs.check_subscription import is_subscribed
 
-from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb
+from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb, get_back_to_district_kb, get_continue_establishments_kb
 
 from funcs.db import check_existing_user, add_new_user, get_establishments, get_photo_paths_for_establishment
 
@@ -59,18 +59,17 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
     establishment_type = callback_query.data
 
     data = await state.get_data()
-
     district = data.get("district")
 
     # Получаем список заведений из базы данных
     establishments = await get_establishments(district, establishment_type)
 
     if establishments:
-
         num_per_message = 3
-        num_messages = len(establishments) // num_per_message + (len(establishments) % num_per_message > 0)
 
-        for i in range(num_messages):
+        remaining_establishments = establishments[num_per_message:] if len(establishments) > num_per_message else []
+
+        for i in range(1):
             start_index = i * num_per_message
             end_index = min((i + 1) * num_per_message, len(establishments))
 
@@ -89,7 +88,6 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
                                      f"{establishment_description}\n\n" \
                                      f"{establishment_feature}"
 
-                # Создаем медиа группу
                 media_group = MediaGroupBuilder(caption=establishment_text)
 
                 for photo_path in establishment_photo_paths:
@@ -97,6 +95,69 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
 
                 await callback_query.bot.send_media_group(chat_id=chat_id, media=media_group.build())
 
+        # Сохраняем оставшиеся заведения в состоянии
+        await state.update_data(remaining_establishments=remaining_establishments)
+
+        if remaining_establishments:
+            await callback_query.bot.send_message(chat_id=chat_id,
+                                                  text="Продолжить?",
+                                                  reply_markup=get_continue_establishments_kb())
+        else:
+            await callback_query.bot.send_message(chat_id=chat_id,
+                                                  text="Пока что это всё, что я могу тебе предложить по твоему запросу",
+                                                  reply_markup=get_back_to_district_kb())
+
     else:
         await callback_query.message.edit_text(
-            f'К сожалению, в районе {district} нет заведений типа {establishment_type}.')
+            f'К сожалению, в районе {district} нет заведений типа {establishment_type}.',
+            reply_markup=get_back_to_district_kb())
+
+
+@form_router.callback_query(F.data.in_({"continue_establishments"}))
+async def continue_establishments(callback_query: CallbackQuery, state: FSMContext):
+    chat_id = callback_query.from_user.id
+    data = await state.get_data()
+    remaining_establishments = data.get("remaining_establishments")
+
+    if remaining_establishments:
+        num_per_message = 3
+
+        establishments_to_send = remaining_establishments[:num_per_message]
+        remaining_establishments = remaining_establishments[num_per_message:]
+
+        for establishment in establishments_to_send:
+            establishment_id = establishment[0]
+            establishment_name = establishment[1]
+            establishment_address = establishment[4]
+            establishment_metro = establishment[5]
+            establishment_description = establishment[6]
+            establishment_feature = establishment[7]
+            establishment_photo_paths = get_photo_paths_for_establishment(establishment_id)
+
+            establishment_text = f"{establishment_name}\n" \
+                                 f"📍 {establishment_address}\n" \
+                                 f"Ⓜ️ {establishment_metro}\n\n" \
+                                 f"{establishment_description}\n\n" \
+                                 f"{establishment_feature}"
+
+            media_group = MediaGroupBuilder(caption=establishment_text)
+
+            for photo_path in establishment_photo_paths:
+                media_group.add(type="photo", media=FSInputFile(photo_path))
+
+            await callback_query.bot.send_media_group(chat_id=chat_id, media=media_group.build())
+
+        # Сохраняем оставшиеся заведения в состоянии
+        await state.update_data(remaining_establishments=remaining_establishments)
+
+        if remaining_establishments:
+            await callback_query.bot.send_message(chat_id=chat_id,
+                                                  text="Продолжить?",
+                                                  reply_markup=get_continue_establishments_kb())
+        else:
+            await callback_query.bot.send_message(chat_id=chat_id,
+                                                  text="Пока что это всё, что я могу тебе предложить по твоему запросу",
+                                                  reply_markup=get_back_to_district_kb())
+
+    else:
+        await callback_query.answer("Все заведения уже были показаны")
