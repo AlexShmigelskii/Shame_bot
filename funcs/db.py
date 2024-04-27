@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 
@@ -208,3 +209,45 @@ def get_photo_paths_for_establishment(establishment_id):
 
     # Возвращаем список путей к фотографиям
     return [path[0] for path in photo_paths]
+
+
+async def get_establishments_any_type(district_name):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    good_district = district_name.split("admin_")[1]
+
+    # Получаем ID района
+    district_id = get_district_id(good_district)
+
+    # Запрос к базе данных для получения заведений по району и типу
+    cursor.execute("SELECT * FROM establishments WHERE id_district=?", (district_id,))
+
+    establishments = cursor.fetchall()
+
+    conn.close()
+
+    return establishments
+
+
+def delete_establishment(id_establishment):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    # Получаем пути к фотографиям заведения
+    cursor.execute("SELECT path_to_photo FROM establishment_photos WHERE id_establishment=?", (id_establishment,))
+    photo_paths = cursor.fetchall()
+
+    # Удаляем фотографии с диска
+    for photo_path in photo_paths:
+        if os.path.exists(photo_path[0]):
+            os.remove(photo_path[0])
+
+    # Удаляем заведение из базы данных
+    cursor.execute("DELETE FROM establishments WHERE id_establishment=?", (id_establishment,))
+
+    # Удаляем связанные с заведением фотографии из базы данных и с диска
+    cursor.execute("DELETE FROM establishment_photos WHERE id_establishment=?", (id_establishment,))
+    conn.commit()
+
+    conn.close()

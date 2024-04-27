@@ -5,12 +5,13 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from Forms.admin_form import Form
+from Forms.admin_form import Add_Form, Delete_Form
 
-from keyboards.admin_kb import get_admin_kb, get_admin_district_kb, get_admin_place_kb, get_admin_stop_kb
+from keyboards.admin_kb import get_admin_kb, get_admin_district_kb, get_admin_place_kb, get_admin_stop_kb, \
+    get_admin_delete_success_kb
 
 from funcs.db import get_district_id, get_type_id, save_establishment_to_database, check_existing_establishment, \
-    save_photo_path_to_database
+    save_photo_path_to_database, get_establishments_any_type, delete_establishment
 
 from secret import ADMIN_ID
 
@@ -70,8 +71,20 @@ async def process_admin_chosen_district(callback_query: CallbackQuery, state: FS
 
     elif action == "delete":
 
-        await callback_query.message.edit_text(f"Что удаляем?",
-                                               reply_markup=get_admin_place_kb())
+        establishments = await get_establishments_any_type(district)
+
+        if establishments:
+            establishments_dict = {i + 1: est[0] for i, est in enumerate(establishments)}
+
+            # Сохраняем словарь в состояние FSM
+            await state.update_data(establishments_dict=establishments_dict)
+
+            establishments_info = "\n".join([f"{i + 1}. {est[1]}" for i, est in enumerate(establishments)])
+            await callback_query.message.edit_text(
+                f"Выберите номер заведения, которое хотите удалить:\n{establishments_info}")
+            await state.set_state(Delete_Form.EstablishmentNumber)
+        else:
+            await callback_query.message.edit_text("В этом районе нет заведений для удаления.")
 
 
 @form_router.callback_query(F.data.in_({"admin_Ресторан", "admin_Бар"}))
@@ -83,55 +96,55 @@ async def process_add_delete_chosen_place(callback_query: CallbackQuery, state: 
 
     if action == "add":
         await callback_query.message.answer("Введите название заведения:")
-        await state.set_state(Form.Name)  # Переход к состоянию для ввода названия заведения
+        await state.set_state(Add_Form.Name)  # Переход к состоянию для ввода названия заведения
 
 
-@form_router.message(Form.Name)
+@form_router.message(Add_Form.Name)
 async def process_name_input(message: Message, state: FSMContext):
     establishment_name = message.text
 
     await state.update_data(new_establishment_name=establishment_name)
     await message.answer("Введите особенности заведения:")
-    await state.set_state(Form.Features)
+    await state.set_state(Add_Form.Features)
 
 
-@form_router.message(Form.Features)
+@form_router.message(Add_Form.Features)
 async def process_features_input(message: Message, state: FSMContext):
     establishment_features = message.text
 
     await state.update_data(new_establishment_features=establishment_features)
     await message.answer("Введите адрес заведения:")
-    await state.set_state(Form.Address)
+    await state.set_state(Add_Form.Address)
 
 
-@form_router.message(Form.Address)
+@form_router.message(Add_Form.Address)
 async def process_address_input(message: Message, state: FSMContext):
     establishment_address = message.text
 
     await state.update_data(new_establishment_address=establishment_address)
     await message.answer("Введите ближайшие станции метро:")
-    await state.set_state(Form.Metro)
+    await state.set_state(Add_Form.Metro)
 
 
-@form_router.message(Form.Metro)
+@form_router.message(Add_Form.Metro)
 async def process_metro_input(message: Message, state: FSMContext):
     metro = message.text
 
     await state.update_data(new_metro=metro)
     await message.answer("Введите описание:")
-    await state.set_state(Form.Description)
+    await state.set_state(Add_Form.Description)
 
 
-@form_router.message(Form.Description)
+@form_router.message(Add_Form.Description)
 async def process_description_input(message: Message, state: FSMContext):
     description = message.text
 
     await state.update_data(new_description=description)
     await message.answer("Присылай мне по одной фотографии")
-    await state.set_state(Form.Photo)
+    await state.set_state(Add_Form.Photo)
 
 
-@form_router.message(Form.Photo, F.photo)
+@form_router.message(Add_Form.Photo, F.photo)
 async def process_photo_input(message: Message, state: FSMContext, PHOTOS_FOLDER="photos"):
     # Получаем идентификатор фотографии, отправленной пользователем
     photo_id = message.photo[-1].file_id
@@ -181,9 +194,32 @@ async def process_photo_input(message: Message, state: FSMContext, PHOTOS_FOLDER
                          reply_markup=get_admin_stop_kb())
 
 
-@form_router.callback_query(Form.Photo, F.data.in_({"photos_done"}))
+@form_router.callback_query(Add_Form.Photo, F.data.in_({"photos_done"}))
 async def process_state_exit(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.message.answer("Заведение с фотографиями загружены!"
                                         "\nЧто делаем дальше, Бос?",
                                         reply_markup=get_admin_kb())
     await state.clear()
+
+
+@form_router.message(Delete_Form.EstablishmentNumber)
+async def process_number_establishment_to_delete(message: Message, state: FSMContext):
+    number_to_delete = int(message.text)
+
+    # Получаем сохраненный словарь из состояния FSM
+    admin_data = await state.get_data()
+    establishments_dict = admin_data.get("establishments_dict")
+
+    # Проверяем, есть ли выбранное заведение в словаре
+    establishment_id = establishments_dict.get(number_to_delete)
+
+    if establishment_id:
+        delete_establishment(establishment_id)
+
+        await message.answer(f"Заведение с номером {number_to_delete} удалено.",
+                             reply_markup=get_admin_delete_success_kb())
+
+        await state.clear()
+    else:
+        await message.answer("Неверный номер заведения.")
+

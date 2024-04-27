@@ -39,3 +39,10 @@ def get_admin_stop_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Готово!", callback_data="photos_done")],
     ])
     return kb
+
+
+def get_admin_delete_success_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Отлично!", callback_data="back_to_admin")],
+    ])
+    return kb
