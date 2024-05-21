@@ -15,18 +15,34 @@ from funcs.db import get_district_id, get_type_id, save_establishment_to_databas
 
 from secret import ADMIN_ID
 
+from essentials import bot
+
 form_router = Router()
 
 
-def is_admin(user_id):
-    admin_ids = ADMIN_ID
-    return user_id in admin_ids
+async def is_admin(user_id):
+    # Проверка в локальном списке администраторов
+    if user_id in ADMIN_ID:
+        return True
+
+    try:
+        # Получение списка администраторов чата
+        chat_admins = await bot.get_chat_administrators(chat_id='@shamemedia')
+        chat_admin_ids = [admin.user.id for admin in chat_admins]
+
+        # Проверка, является ли пользователь администратором чата
+        if user_id in chat_admin_ids:
+            return True
+    except Exception as e:
+        print(f"Ошибка при получении списка администраторов чата: {e}")
+
+    return False
 
 
 @form_router.message(Command("admin"))
 async def command_admin(message: Message) -> None:
     # Проверяем, является ли отправитель администратором
-    if is_admin(message.from_user.id):
+    if await is_admin(message.from_user.id):
 
         # Отправляем сообщение о входе в режим администратора
         await message.answer("Вы вошли в режим администратора.",

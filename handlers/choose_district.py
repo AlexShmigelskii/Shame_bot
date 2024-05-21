@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery, InputMediaPhoto, FSInputFile, InputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.media_group import MediaGroupBuilder
 
-from funcs.check_subscription import is_subscribed
+from funcs.check_subscription import is_subscribed, is_administrator
 
 from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb, get_back_to_district_kb, get_continue_establishments_kb
 
@@ -18,19 +18,17 @@ async def choose_district(callback_query: CallbackQuery):
     existing_user = check_existing_user(user_id)
 
     if existing_user:
-        if await is_subscribed(user_id):
+        if await is_subscribed(user_id) or await is_administrator(user_id):
             # Пользователь подписан на канал, позволяем ему выбирать район
             await callback_query.message.edit_text("На связи бот shame. Выбирай район, и я создам подборку лучших "
                                                    "ресторанов, кафе, баров и клубов в этом месте."
-                                                   "\nЕсли остались вопросы или есть обратная связь по боту, напишите "
-                                                   "Насте @onesddluv. А если хотите разместить своё заведение в боте "
-                                                   "или предложить другое сотрудничество — свяжитесь с Яной "
-                                                   "@kosmaticyana.",
+                                                   "\nПо вопросам сотрудничества пишите @onesddluv",
                                                    reply_markup=get_district_kb())
 
         else:
             # Пользователь не подписан на канал, сообщаем ему об этом
-            await callback_query.message.edit_text("Для выбора района вы должны подписаться на наш канал!",
+            await callback_query.message.edit_text("Для выбора района вы должны подписаться на наш канал!"
+                                                   "@shamemedia",
                                                    reply_markup=get_subscription_kb())
 
     else:
@@ -82,11 +80,11 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
                 establishment_feature = establishment[7]
                 establishment_photo_paths = get_photo_paths_for_establishment(establishment_id)
 
-                establishment_text = f"{establishment_name}\n" \
+                establishment_text = f"{establishment_name}\n\n" \
+                                     f"{establishment_feature}\n\n"\
                                      f"📍 {establishment_address}\n" \
                                      f"Ⓜ️ {establishment_metro}\n\n" \
-                                     f"{establishment_description}\n\n" \
-                                     f"{establishment_feature}"
+                                     f"{establishment_description}" \
 
                 media_group = MediaGroupBuilder(caption=establishment_text)
 
@@ -134,11 +132,11 @@ async def continue_establishments(callback_query: CallbackQuery, state: FSMConte
             establishment_feature = establishment[7]
             establishment_photo_paths = get_photo_paths_for_establishment(establishment_id)
 
-            establishment_text = f"{establishment_name}\n" \
+            establishment_text = f"{establishment_name}\n\n" \
+                                 f"{establishment_feature}\n\n"\
                                  f"📍 {establishment_address}\n" \
                                  f"Ⓜ️ {establishment_metro}\n\n" \
-                                 f"{establishment_description}\n\n" \
-                                 f"{establishment_feature}"
+                                 f"{establishment_description}" \
 
             media_group = MediaGroupBuilder(caption=establishment_text)
 
