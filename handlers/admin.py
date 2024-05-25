@@ -11,7 +11,8 @@ from keyboards.admin_kb import get_admin_kb, get_admin_district_kb, get_admin_pl
     get_admin_delete_success_kb
 
 from funcs.db import get_district_id, get_type_id, save_establishment_to_database, check_existing_establishment, \
-    save_photo_path_to_database, get_establishments_any_type, delete_establishment
+    save_photo_path_to_database, get_establishments_any_type, delete_establishment, \
+    get_user_count, get_establishment_count
 
 from secret import ADMIN_ID
 
@@ -44,8 +45,13 @@ async def command_admin(message: Message) -> None:
     # Проверяем, является ли отправитель администратором
     if await is_admin(message.from_user.id):
 
+        num_user = get_user_count()
+        num_establishments = get_establishment_count()
+
         # Отправляем сообщение о входе в режим администратора
-        await message.answer("Вы вошли в режим администратора.",
+        await message.answer("Вы вошли в режим администратора."
+                             f"\nВсего пользователей:{num_user}"
+                             f"\nВсего заведений:{num_establishments}",
                              reply_markup=get_admin_kb())
 
     else:

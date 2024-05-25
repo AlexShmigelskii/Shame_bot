@@ -251,3 +251,25 @@ def delete_establishment(id_establishment):
     conn.commit()
 
     conn.close()
+
+
+def get_user_count():
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT COUNT(*) FROM users')
+    user_count = cursor.fetchone()[0]
+
+    conn.close()
+    return user_count
+
+
+def get_establishment_count():
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT COUNT(*) FROM establishments')
+    establishment_count = cursor.fetchone()[0]
+
+    conn.close()
+    return establishment_count
