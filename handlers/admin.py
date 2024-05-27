@@ -1,18 +1,25 @@
 import os
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from Forms.admin_form import Add_Form, Delete_Form
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+import pandas as pd
+
+import datetime
+
+from Forms.admin_form import Add_Form, Delete_Form, Stats_Form
 
 from keyboards.admin_kb import get_admin_kb, get_admin_district_kb, get_admin_place_kb, get_admin_stop_kb, \
-    get_admin_delete_success_kb
+    back_to_admin_kb, nothing_to_show_kb, back_to_admin_after_stats_kb
 
 from funcs.db import get_district_id, get_type_id, save_establishment_to_database, check_existing_establishment, \
     save_photo_path_to_database, get_establishments_any_type, delete_establishment, \
-    get_user_count, get_establishment_count
+    get_user_count, get_establishment_count, get_request_counts_by_hour
 
 from secret import ADMIN_ID
 
@@ -50,8 +57,8 @@ async def command_admin(message: Message) -> None:
 
         # Отправляем сообщение о входе в режим администратора
         await message.answer("Вы вошли в режим администратора."
-                             f"\nВсего пользователей:{num_user}"
-                             f"\nВсего заведений:{num_establishments}",
+                             f"\nВсего пользователей: {num_user}"
+                             f"\nВсего заведений: {num_establishments}",
                              reply_markup=get_admin_kb())
 
     else:
@@ -60,8 +67,24 @@ async def command_admin(message: Message) -> None:
 
 @form_router.callback_query(F.data.in_({"back_to_admin"}))
 async def process_back_to_admin(callback_query: CallbackQuery):
-    await callback_query.message.edit_text("Что делаем, Бос?",
+    num_user = get_user_count()
+    num_establishments = get_establishment_count()
+
+    await callback_query.message.edit_text("Административная панель:"
+                                           f"\nВсего пользователей:{num_user}"
+                                           f"\nВсего заведений:{num_establishments}",
                                            reply_markup=get_admin_kb())
+
+
+@form_router.callback_query(F.data.in_({"back_to_admin_after_stats"}))
+async def process_back_to_admin_after_stats(callback_query: CallbackQuery):
+    num_user = get_user_count()
+    num_establishments = get_establishment_count()
+
+    await callback_query.message.answer("Административная панель:"
+                                        f"\nВсего пользователей:{num_user}"
+                                        f"\nВсего заведений:{num_establishments}",
+                                        reply_markup=get_admin_kb())
 
 
 @form_router.callback_query(F.data.in_({"add", "delete"}))
@@ -218,9 +241,8 @@ async def process_photo_input(message: Message, state: FSMContext, PHOTOS_FOLDER
 
 @form_router.callback_query(Add_Form.Photo, F.data.in_({"photos_done"}))
 async def process_state_exit(callback_query: CallbackQuery, state: FSMContext):
-    await callback_query.message.answer("Заведение с фотографиями загружены!"
-                                        "\nЧто делаем дальше, Бос?",
-                                        reply_markup=get_admin_kb())
+    await callback_query.message.answer("Заведение с фотографиями загружены!",
+                                        reply_markup=nothing_to_show_kb())
     await state.clear()
 
 
@@ -239,9 +261,90 @@ async def process_number_establishment_to_delete(message: Message, state: FSMCon
         delete_establishment(establishment_id)
 
         await message.answer(f"Заведение с номером {number_to_delete} удалено.",
-                             reply_markup=get_admin_delete_success_kb())
+                             reply_markup=back_to_admin_kb())
 
         await state.clear()
     else:
         await message.answer("Неверный номер заведения.")
 
+
+@form_router.callback_query(F.data.in_({"show_stats"}))
+async def show_statistics_command(callback_query: CallbackQuery, state: FSMContext):
+    await callback_query.message.edit_text("За какой срок вывести статистику? (введите количество дней)")
+    days = callback_query.data
+    await state.update_data(days_to_show=days)
+    await state.set_state(Stats_Form.Period)
+
+
+@form_router.message(Stats_Form.Period)
+async def get_stats_period(message: Message, state: FSMContext):
+    try:
+        period = int(message.text)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректное число дней.")
+        return
+
+    end_date = datetime.datetime.now().replace(minute=0, second=0, microsecond=0)
+    start_date = end_date - datetime.timedelta(days=period)
+
+    # Получение данных
+    # Создание временного индекса с интервалом в час
+    time_index = pd.date_range(start=start_date, end=end_date, freq='h')
+
+    # Список hours содержит все часы между start_date и end_date
+    hours = time_index.to_pydatetime().tolist()
+
+    # Получение данных
+    request_counts = get_request_counts_by_hour(start_date, end_date)
+
+    if not request_counts:
+        await message.answer("За указанный период данных нет.",
+                             reply_markup=nothing_to_show_kb())
+        await state.clear()
+        return
+
+    # Создание списка counts, где для каждого часа будет количество запросов или 0, если запросов не было
+    counts = [request_counts.get(hour, 0) for hour in hours]
+
+    # Построение графика
+    plt.figure(figsize=(15, 7))
+    plt.plot(hours, counts, marker='o')
+    plt.title('Количество запросов в бот')
+    plt.xlabel('Время')
+    plt.ylabel('Количество запросов')
+    plt.grid(True)
+
+    # Настройка меток по оси X
+    if period <= 2:
+        locator = mdates.HourLocator(interval=1)
+        formatter = mdates.DateFormatter('%d-%m %H:%M')
+    elif period <= 7:
+        locator = mdates.HourLocator(interval=6)
+        formatter = mdates.DateFormatter('%d-%m %H:%M')
+    elif period <= 30:
+        locator = mdates.DayLocator(interval=1)
+        formatter = mdates.DateFormatter('%d-%m')
+    else:
+        locator = mdates.DayLocator(interval=7)
+        formatter = mdates.DateFormatter('%d-%m')
+
+    plt.gca().xaxis.set_major_locator(locator)
+    plt.gca().xaxis.set_major_formatter(formatter)
+
+    plt.xticks(rotation=70)
+    plt.tight_layout()
+
+    # Путь для сохранения графика с уникальным именем
+    unique_filename = f'stats_{start_date.strftime("%Y%m%d")}_{end_date.strftime("%Y%m%d")}.png'
+    graph_filepath = os.path.join('photos', 'graphs', unique_filename)
+    plt.savefig(graph_filepath)
+
+    # Отправка графика администратору
+    await message.answer_photo(FSInputFile(graph_filepath), caption="Статистика обработанных запросов за указанный "
+                                                                    "период",
+                               reply_markup=back_to_admin_after_stats_kb())
+
+    # Удаление локального файла
+    os.remove(graph_filepath)
+
+    await state.clear()

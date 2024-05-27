@@ -12,3 +12,7 @@ class Add_Form(StatesGroup):
 
 class Delete_Form(StatesGroup):
     EstablishmentNumber = State()
+
+
+class Stats_Form(StatesGroup):
+    Period = State()

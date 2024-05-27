@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import datetime
 
 
 def create_database():
@@ -41,6 +42,12 @@ def create_database():
                     id_establishment INTEGER,
                     path_to_photo TEXT,
                     FOREIGN KEY (id_establishment) REFERENCES establishments(id_establishment))''')
+
+    # Создание таблицы запросов к боту
+    cursor.execute('''CREATE TABLE IF NOT EXISTS requests (
+                    id INTEGER PRIMARY KEY,
+                    user_id INTEGER,
+                    request_time DATETIME)''')
 
     # districts = [
     #     "Арбат",
@@ -273,3 +280,35 @@ def get_establishment_count():
 
     conn.close()
     return establishment_count
+
+
+def log_request(user_id):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO requests (user_id, request_time) VALUES (?, ?)
+    """, (user_id, datetime.datetime.now()))
+
+    conn.commit()
+    conn.close()
+
+
+def get_request_counts_by_hour(start_date, end_date):
+    conn = sqlite3.connect('shame.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT strftime('%Y-%m-%d %H:00:00', request_time) as hour, COUNT(*)
+        FROM requests
+        WHERE request_time BETWEEN ? AND ?
+        GROUP BY hour
+        ORDER BY hour
+    """, (start_date.strftime("%Y-%m-%d %H:%M:%S"), end_date.strftime("%Y-%m-%d %H:%M:%S")))
+
+    data = cursor.fetchall()
+    conn.close()
+
+    request_counts = {datetime.datetime.strptime(hour, "%Y-%m-%d %H:00:00"): count for hour, count in data}
+    return request_counts
+

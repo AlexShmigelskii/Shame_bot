@@ -5,6 +5,7 @@ def get_admin_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Добавить", callback_data="add"),
          InlineKeyboardButton(text="Удалить", callback_data="delete")],
+        [InlineKeyboardButton(text="Вывести статистику", callback_data="show_stats")]
     ])
     return kb
 
@@ -41,8 +42,22 @@ def get_admin_stop_kb() -> InlineKeyboardMarkup:
     return kb
 
 
-def get_admin_delete_success_kb() -> InlineKeyboardMarkup:
+def back_to_admin_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Отлично!", callback_data="back_to_admin")],
+    ])
+    return kb
+
+
+def back_to_admin_after_stats_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Отлично!", callback_data="back_to_admin_after_stats")],
+    ])
+    return kb
+
+
+def nothing_to_show_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Назад!", callback_data="back_to_admin")],
     ])
     return kb

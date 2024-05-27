@@ -7,13 +7,17 @@ from funcs.check_subscription import is_subscribed, is_administrator
 
 from keyboards.choose_district_kb import get_district_kb, get_place_kb, get_subscription_kb, get_back_to_district_kb, get_continue_establishments_kb
 
-from funcs.db import check_existing_user, add_new_user, get_establishments, get_photo_paths_for_establishment
+from funcs.db import check_existing_user, add_new_user, get_establishments, get_photo_paths_for_establishment, \
+    log_request
 
 form_router = Router()
 
 
 @form_router.callback_query(F.data.in_({"choose_district", "check_subscription"}))
 async def choose_district(callback_query: CallbackQuery):
+
+    log_request(callback_query.from_user.id)
+
     user_id = callback_query.from_user.id
     existing_user = check_existing_user(user_id)
 
@@ -43,6 +47,9 @@ async def choose_district(callback_query: CallbackQuery):
 @form_router.callback_query(F.data.in_({"Арбат", "Басманный", "Замоскворечье", " Красносельский", "Мещанский",
                                         "Пресненский", "Таганский", "Тверской", "Хамовники", "Якиманка",}))
 async def process_chosen_district(callback_query: CallbackQuery, state: FSMContext):
+
+    log_request(callback_query.from_user.id)
+
     district = callback_query.data
 
     await state.update_data(district=district)
@@ -53,6 +60,9 @@ async def process_chosen_district(callback_query: CallbackQuery, state: FSMConte
 
 @form_router.callback_query(F.data.in_({"Ресторан", "Бар"}))
 async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext):
+
+    log_request(callback_query.from_user.id)
+
     chat_id = callback_query.from_user.id
     establishment_type = callback_query.data
 
@@ -113,6 +123,9 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
 
 @form_router.callback_query(F.data.in_({"continue_establishments"}))
 async def continue_establishments(callback_query: CallbackQuery, state: FSMContext):
+
+    log_request(callback_query.from_user.id)
+
     chat_id = callback_query.from_user.id
     data = await state.get_data()
     remaining_establishments = data.get("remaining_establishments")
