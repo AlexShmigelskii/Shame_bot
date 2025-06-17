@@ -1,24 +1,30 @@
 import asyncio
-
 import logging
-import sys
-
-import secret
-from essentials import dp, bot
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+from secret import BOT_TOKEN
+from handlers import main_menu, admin, choose_district
+from funcs.openai_helper import init_context_db
 from funcs.db import create_database
-from handlers import main_menu, choose_district, admin
-from populate_db import populate_db
 
+# Включаем логирование
+logging.basicConfig(level=logging.INFO)
 
-# Запуск бота
+# Инициализируем бота и диспетчер
 async def main():
-    dp.include_routers(
-        main_menu.form_router,
-        choose_district.form_router,
-        admin.form_router,
-    )
+    await create_database()
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher(storage=MemoryStorage())
 
-    await bot.delete_webhook(drop_pending_updates=True)
+    # Регистрируем роутеры
+    dp.include_router(main_menu.form_router)
+    dp.include_router(admin.form_router)
+    dp.include_router(choose_district.form_router)
+
+    # Инициализируем базу данных для контекста
+    init_context_db()
+    
+    # Запускаем бота
     await dp.start_polling(bot)
 
 
@@ -29,6 +35,4 @@ async def run():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    create_database()
     asyncio.run(run())

@@ -16,10 +16,10 @@ form_router = Router()
 @form_router.callback_query(F.data.in_({"choose_district", "check_subscription"}))
 async def choose_district(callback_query: CallbackQuery):
 
-    log_request(callback_query.from_user.id)
+    await log_request(callback_query.from_user.id)
 
     user_id = callback_query.from_user.id
-    existing_user = check_existing_user(user_id)
+    existing_user = await check_existing_user(user_id)
 
     if existing_user:
         if await is_subscribed(user_id) or await is_administrator(user_id):
@@ -37,7 +37,7 @@ async def choose_district(callback_query: CallbackQuery):
 
     else:
         # Пользователя нет в базе данных и он как-то смог отправить команду
-        add_new_user(user_id)
+        await add_new_user(user_id)
         await callback_query.message.answer(
             "Привет! Я - бот SHAME. Порекомендую Вам лучшие рестораны, кафе, бары и клубы в "
             "центральном округе Москвы."
@@ -48,7 +48,7 @@ async def choose_district(callback_query: CallbackQuery):
                                         "Пресненский", "Таганский", "Тверской", "Хамовники", "Якиманка",}))
 async def process_chosen_district(callback_query: CallbackQuery, state: FSMContext):
 
-    log_request(callback_query.from_user.id)
+    await log_request(callback_query.from_user.id)
 
     district = callback_query.data
 
@@ -61,7 +61,7 @@ async def process_chosen_district(callback_query: CallbackQuery, state: FSMConte
 @form_router.callback_query(F.data.in_({"Ресторан", "Бар"}))
 async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext):
 
-    log_request(callback_query.from_user.id)
+    await log_request(callback_query.from_user.id)
 
     chat_id = callback_query.from_user.id
     establishment_type = callback_query.data
@@ -88,7 +88,7 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
                 establishment_metro = establishment[5]
                 establishment_description = establishment[6]
                 establishment_feature = establishment[7]
-                establishment_photo_paths = get_photo_paths_for_establishment(establishment_id)
+                establishment_photo_paths = await get_photo_paths_for_establishment(establishment_id)
 
                 establishment_text = f"{establishment_name}\n\n" \
                                      f"{establishment_feature}\n\n"\
@@ -124,7 +124,7 @@ async def process_chosen_place(callback_query: CallbackQuery, state: FSMContext)
 @form_router.callback_query(F.data.in_({"continue_establishments"}))
 async def continue_establishments(callback_query: CallbackQuery, state: FSMContext):
 
-    log_request(callback_query.from_user.id)
+    await log_request(callback_query.from_user.id)
 
     chat_id = callback_query.from_user.id
     data = await state.get_data()
@@ -143,7 +143,7 @@ async def continue_establishments(callback_query: CallbackQuery, state: FSMConte
             establishment_metro = establishment[5]
             establishment_description = establishment[6]
             establishment_feature = establishment[7]
-            establishment_photo_paths = get_photo_paths_for_establishment(establishment_id)
+            establishment_photo_paths = await get_photo_paths_for_establishment(establishment_id)
 
             establishment_text = f"{establishment_name}\n\n" \
                                  f"{establishment_feature}\n\n"\

@@ -6,6 +6,7 @@ class Add_Form(StatesGroup):
     Features = State()
     Address = State()
     Metro = State()
+    Cuisine = State()
     Description = State()
     Photo = State()
 
